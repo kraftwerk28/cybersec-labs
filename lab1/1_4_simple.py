@@ -9,7 +9,7 @@ from utils import *
 m = """EFFPQLEKVTVPCPYFLMVHQLUEWCNVWFYGHYTCETHQEKLPVMSAKSPVPAPVYWMVHQLUSPQLYWLASLFVWPQLMVHQLUPLRPSQLULQESPBLWPCSVRVWFLHLWFLWPUEWFYOTCMQYSLWOYWYETHQEKLPVMSAKSPVPAPVYWHEPPLUWSGYULEMQTLPPLUGUYOLWDTVSQETHQEKLPVPVSMTLEUPQEPCYAMEWWYTYWDLUULTCYWPQLSEOLSVOHTLUYAPVWLYGDALSSVWDPQLNLCKCLRQEASPVILSLEUMQBQVMQCYAHUYKEKTCASLFPYFLMVHQLUPQLHULIVYASHEUEDUEHQBVTTPQLVWFLRYGMYVWMVFLWMLSPVTTBYUNESESADDLSPVYWCYAMEWPUCPYFVIVFLPQLOLSSEDLVWHEUPSKCPQLWAOKLUYGMQEUEMPLUSVWENLCEWFEHHTCGULXALWMCEWETCSVSPYLEMQYGPQLOMEWCYAGVWFEBECPYASLQVDQLUYUFLUGULXALWMCSPEPVSPVMSBVPQPQVSPCHLYGMVHQLUPQLWLRPOEDVMETBYUFBVTTPENLPYPQLWLRPTEKLWZYCKVPTCSTESQPQULLGYAUMEHVPETFWMEHVPETBZMEHVPETB"""
 
 
-m = """AFFRONTINGDISCRETIONASDOISANNOUNCINGNOWMONTHSESTEEMOPPOSENEARERENABLETOOSIXSHENUMEROUSUNLOCKEDYOUPERCEIVESPEEDILYAFFIXEDOFFENCESPIRITSORYEOFOFFICESBETWEENREALONSHOTITWEREFOURANASABSOLUTEBACHELORRENDEREDSIXNAYYOUJUVENILEVANITYENTIREANCHATTYTOATDISTANTINHABITAMONGSTBYAPPETITEWELCOMEDINTERESTTHEGOODNESSBOYNOTESTIMABLEEDUCATIONFORDISPOSINGPRONOUNCEHERJOHNSIZEGOODGAYPLANSENTOLDROOFOWNINQUIETUDESAWUNDERSTOODHISFRIENDSHIPFREQUENTLYYETNATUREHISMARKEDHAMWISHEDWOODYEQUALASKSAWSIRWEEKSAWAREDECAYENTRANCEPROSPECTREMOVINGWEPACKAGESSTRICTLYISNOSMALLESTHEFORHOPESMAYCHIEFGETHOURSDAYROOMSOHNOTURNEDBEHINDPOLITEPIQUEDENOUGHATFORBADEFEWTHROUGHINQUIRYBLUSHESYOUCOUSINNOITSELFELDESTITINDINNERLATTERMISSEDNOBOISTEROUSESTIMATINGINTERESTEDCOLLECTINGGETCONVICTIONFRIENDSHIPSAYBOYHIMMRSSHYARTICLESMILINGRESPECTOPINIONEXCITEDWELCOMEDHUMOUREDREJOICEDPECULIARTOINANNOWINDULGENCEDISSIMILARFORHISTHOROUGHLYHASTERMINATEDAGREEMENTOFFENDINGCOMMANDEDMYANCHANGEWHOLLYSAYWHYELDESTPERIODAREPROJECTIONPUTCELEBRATEDPARTICULARUNRESERVEDJOYUNSATIABLEITSINTHENDAREGOODAMROSEBREDORONAMINNEARERSQUAREWANTEDTOSHEWINGANOTHERDEMANDSTOMARIANNEPROPERTYCHEERFULINFORMEDATSTRIKINGATCLOTHESPARLORSHOWEVERBYCOTTAGEONINVIEWSITORMEANTDRIFTTOBECONCERNPARLORSSETTLEDORDOSHYNESSADDRESSREMAINDERNORTHWARDPERFORMEDOUTFORMOONLIGHTYETLATEADDNAMEWASRENTPARKFROMRICHHEALWAYSDODOFORMERHEHIGHLY"""
+# m = """AFFRONTINGDISCRETIONASDOISANNOUNCINGNOWMONTHSESTEEMOPPOSENEARERENABLETOOSIXSHENUMEROUSUNLOCKEDYOUPERCEIVESPEEDILYAFFIXEDOFFENCESPIRITSORYEOFOFFICESBETWEENREALONSHOTITWEREFOURANASABSOLUTEBACHELORRENDEREDSIXNAYYOUJUVENILEVANITYENTIREANCHATTYTOATDISTANTINHABITAMONGSTBYAPPETITEWELCOMEDINTERESTTHEGOODNESSBOYNOTESTIMABLEEDUCATIONFORDISPOSINGPRONOUNCEHERJOHNSIZEGOODGAYPLANSENTOLDROOFOWNINQUIETUDESAWUNDERSTOODHISFRIENDSHIPFREQUENTLYYETNATUREHISMARKEDHAMWISHEDWOODYEQUALASKSAWSIRWEEKSAWAREDECAYENTRANCEPROSPECTREMOVINGWEPACKAGESSTRICTLYISNOSMALLESTHEFORHOPESMAYCHIEFGETHOURSDAYROOMSOHNOTURNEDBEHINDPOLITEPIQUEDENOUGHATFORBADEFEWTHROUGHINQUIRYBLUSHESYOUCOUSINNOITSELFELDESTITINDINNERLATTERMISSEDNOBOISTEROUSESTIMATINGINTERESTEDCOLLECTINGGETCONVICTIONFRIENDSHIPSAYBOYHIMMRSSHYARTICLESMILINGRESPECTOPINIONEXCITEDWELCOMEDHUMOUREDREJOICEDPECULIARTOINANNOWINDULGENCEDISSIMILARFORHISTHOROUGHLYHASTERMINATEDAGREEMENTOFFENDINGCOMMANDEDMYANCHANGEWHOLLYSAYWHYELDESTPERIODAREPROJECTIONPUTCELEBRATEDPARTICULARUNRESERVEDJOYUNSATIABLEITSINTHENDAREGOODAMROSEBREDORONAMINNEARERSQUAREWANTEDTOSHEWINGANOTHERDEMANDSTOMARIANNEPROPERTYCHEERFULINFORMEDATSTRIKINGATCLOTHESPARLORSHOWEVERBYCOTTAGEONINVIEWSITORMEANTDRIFTTOBECONCERNPARLORSSETTLEDORDOSHYNESSADDRESSREMAINDERNORTHWARDPERFORMEDOUTFORMOONLIGHTYETLATEADDNAMEWASRENTPARKFROMRICHHEALWAYSDODOFORMERHEHIGHLY"""
 
 # Freq (in %)
 LETTER_FREQ = {
@@ -45,10 +45,10 @@ LETTER_FREQ = {
 class GeneticAlg:
     alphabet = list(string.ascii_uppercase)
     alen = len(alphabet)
-    population_size = 20
-    generation_count = 20
+    population_size = 500
+    generation_count = 2000
     crossover_points = 10
-    mutation_probability = 0.2
+    mutation_probability = 0.9
     crossover_probability = 0.2
 
     def __init__(self, message, correct_key=None):
@@ -68,7 +68,6 @@ class GeneticAlg:
         self.current_generation += 1
         fitnesses = [self.fitness(ind) for ind in self.gen]
         zipped = zip(self.gen, fitnesses)
-        pprint(list(zip([''.join(g) for g in self.gen], fitnesses)))
         max_ind = max(zipped, key=lambda item: item[1])
         report = (f'\nGeneration #{self.current_generation}: '
                   'key = {}, fitness = {}'.format(''.join(
@@ -79,22 +78,30 @@ class GeneticAlg:
             report += '; {}'.format('good' if is_better else 'bad')
         print(report)
 
-        pairs = self.selection(fitnesses)
-        pprint((''.join(k), ''.join(k)))
+        pairs = self.selection([f * 100 for f in fitnesses])
+        # print('Fitness')
+        # pprint(list(zip([''.join(g) for g in self.gen], fitnesses)))
+        # print('Selection')
+        # pprint([(''.join(k[0]), ''.join(k[1])) for k in pairs])
         new_gen = []
         for p1, p2 in pairs:
             c1, c2 = self.crossover(p1, p2), self.crossover(p1, p2, True)
-            # if self.bin_rand(self.mutation_probability):
-            #     c1 = self.mutate(c1, c2)
-            # if self.bin_rand(self.mutation_probability):
-            #     c2 = self.mutate(c1, c2, True)
+            if self.bin_rand(self.mutation_probability):
+                c1 = self.mutate(c1, c2)
+            if self.bin_rand(self.mutation_probability):
+                c2 = self.mutate(c1, c2, True)
             new_gen.append(c1)
             new_gen.append(c2)
         self.best_ind = max_ind
         self.gen = new_gen
 
     def selection(self, fitnesses):
-        return [random.choices(self.gen, k=2, weights=fitnesses)
+        sorted_inds = sorted(zip(self.gen, fitnesses),
+                             key=lambda item: item[1],
+                             reverse=True)
+        best = [b for b, _ in sorted_inds[:self.population_size // 100]]
+        # print(best)
+        return [random.choices(best, k=2)
                 for _ in range(self.population_size // 2)]
 
     def run(self):
@@ -106,7 +113,7 @@ class GeneticAlg:
                 print(f'Correctness = {correct_let}')
 
             dec = self.decode(self.best_ind[0], self.message)
-            if all(word in dec for word in ['OK', 'THE']):
+            if all(word in dec for word in ['AND', 'THE']):
                 print(self.best_ind, dec)
 
     def mutate(self, c1, c2, reverse=False):
@@ -150,6 +157,7 @@ class GeneticAlg:
         child, empty_indices = [], []
         remaining_letters = set(self.alphabet)
         zipped = list(enumerate(zip(parent1, parent2)))
+
         for index, (p1, p2) in reversed(zipped) if reverse else zipped:
             d1 = abs(self.real_freq[p1] - self.expected_freq[p1])
             d2 = abs(self.real_freq[p2] - self.expected_freq[p2])
@@ -200,10 +208,13 @@ class GeneticAlg:
 
 
 if __name__ == '__main__':
-    key = 'UTYZKEWBADMPLIOSNHJFRVGQXC'
-    enc = GeneticAlg.encode(key, m)
-    alg = GeneticAlg(enc, correct_key=key)
-    alg.run()
+    key = 'SDCTLFOUQZNMGEVKXWYPARHIBJ'
+    dec = GeneticAlg.decode(key, m)
+    print(dec)
+
+    # enc = GeneticAlg.encode(key, m)
+    # alg = GeneticAlg(m)
+    # alg.run()
 
     # Mutation algorithm testing
     # bin_vec = [bool(int(i)) for i in '10111001101010100011110111']

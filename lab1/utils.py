@@ -1,7 +1,8 @@
 #!/usr/bin/env python
-import string
-from matplotlib import pyplot as plt
 import math
+from matplotlib import pyplot as plt
+import re
+import string
 
 ALPHABET = string.ascii_lowercase
 
@@ -119,8 +120,37 @@ def caesar(text, letter, alphabet=ALPHABET):
                    for t in text)
 
 
-def renumerate(iterable):
-    pass
+def split_to_ngrams(text, t):
+    return [''.join(text[i:i+t])
+            for i in range(len(text) - t + 1)]
+
+def parse_ngrams(filename):
+    ans = {}
+    for line in open(filename, 'r'):
+        ngram, cnt = line.split()
+        ans[ngram] = int(cnt)
+    return ans
+
+
+def calc_freq(ngrams):
+    return {ngram: ngrams.count(ngram) for ngram in ngrams}
+
+
+def prepare_text(text, upper=True):
+    text = train_text = re.sub(r'[^A-Za-z]+', '', text)
+    if upper:
+        return text.upper()
+    return text
+
+
+def calc_tournament_probabilities(initial, tournament_size):
+    prev = initial
+    ans = [initial]
+    for _ in range(tournament_size - 1):
+        p = prev * (1 - prev)
+        ans.append(p)
+        prev = p
+    return ans
 
 # def chi_squared(text, expected=EXPECTED,
 #                 alphabet=ALPHABET):
