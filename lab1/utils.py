@@ -1,10 +1,13 @@
 #!/usr/bin/env python
 import math
 from matplotlib import pyplot as plt
+import matplotlib
 import re
+import random
 import string
 
 ALPHABET = string.ascii_lowercase
+matplotlib.use('GTK3Agg')
 
 
 def set_alphabet(alphabet):
@@ -75,14 +78,14 @@ def letter_frequencies(text, l):
 def vigenere(message, key, alphabet=ALPHABET):
     m_l, k_l, a_l = len(message), len(key), len(alphabet)
     fullkey = key * (m_l // k_l) + key[:m_l % k_l]
-    return ''.join(alphabet[(alphabet.find(m) + alphabet.find(k)) % a_l]
+    return ''.join(alphabet[(alphabet.index(m) + alphabet.index(k)) % a_l]
                    for m, k in zip(message, fullkey))
 
 
 def devigenere(message, key, alphabet=ALPHABET):
     m_l, k_l, a_l = len(message), len(key), len(alphabet)
     fullkey = key * (m_l // k_l) + key[:m_l % k_l]
-    return ''.join(alphabet[(alphabet.find(m) - alphabet.find(k)) % a_l]
+    return ''.join(alphabet[(alphabet.index(m) - alphabet.index(k)) % a_l]
                    for m, k in zip(message, fullkey))
 
 
@@ -104,6 +107,16 @@ def group(text, t):
     return ans
 
 
+def ungroup(groups):
+    glists = [list(group) for group in groups]
+    i, t = 0, len(glists)
+    ans = []
+    while glists[i]:
+        ans.append(glists[i].pop(0))
+        i = (i + 1) % t
+    return ''.join(ans)
+
+
 def plot_ioc(text, alphabet=ALPHABET, start=2, end=50):
     iocs = []
     for i in range(start, end):
@@ -123,6 +136,11 @@ def caesar(text, letter, alphabet=ALPHABET):
 def split_to_ngrams(text, t):
     return [''.join(text[i:i+t])
             for i in range(len(text) - t + 1)]
+
+
+def ngram_freq(ngrams):
+    return {ngram: ngrams.count(ngram) for ngram in ngrams}
+
 
 def parse_ngrams(filename):
     ans = {}
@@ -151,6 +169,10 @@ def calc_tournament_probabilities(initial, tournament_size):
         ans.append(p)
         prev = p
     return ans
+
+
+def prob(probability: float):
+    return random.random() < probability
 
 # def chi_squared(text, expected=EXPECTED,
 #                 alphabet=ALPHABET):
