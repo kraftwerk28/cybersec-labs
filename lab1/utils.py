@@ -138,6 +138,12 @@ def split_to_ngrams(text, t):
             for i in range(len(text) - t + 1)]
 
 
+# def multi_ngram_freq(text, ngram_sizes):
+#     result = {s:[] for s in ngram_sizes}
+#     counters = [0 for _ in ngram_sizes]
+#     return result
+
+
 def ngram_freq(ngrams):
     return {ngram: ngrams.count(ngram) for ngram in ngrams}
 

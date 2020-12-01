@@ -4,6 +4,7 @@ from utils import *
 from typing import List, Tuple
 from pprint import pprint
 from GA import BaseGA
+from base_GA import BaseGA
 
 
 class Key:
@@ -26,7 +27,7 @@ class Key:
     def __iter__(self):
         return iter(self.key)
 
-    def crossover(self, other: 'Key', k_count: int) -> 'Key':
+    def crossover_(self, other: 'Key', k_count: int) -> 'Key':
         k_points = random.sample(range(len(self.key)), k=k_count)
         rev_k = [k for k in range(len(self.alphabet)) if k not in k_points]
         remaining = other.key[:]
@@ -37,6 +38,23 @@ class Key:
             remaining.remove(letter)
         for index, letter in zip(rev_k, remaining):
             child[index] = letter
+        return Key(child)
+
+    def crossover(self, other: 'Key', k_count: int) -> 'Key':
+        keylen = len(self.key)
+        perm = random.sample(range(keylen), keylen)
+        child = [None] * keylen
+        taken = set()
+        for i in perm[:k_count]:
+            letter = self.key[i]
+            child[i] = letter
+            taken.add(letter)
+        i = 0
+        for idx in perm[k_count:]:
+            while other.key[i] in taken:
+                i += 1
+            child[idx] = other.key[i]
+            i += 1
         return Key(child)
 
     def swap_mutate(self) -> 'Key':
@@ -85,28 +103,15 @@ class Individ:
 
 
 class PolyGA(BaseGA):
-    def __init__(self, cipher_text, key_length=None, train_ngrams=None,
-                 train_text=None, ngram_size=3, ngram_file=None,
-                 predefined_keys=None):
+    def __init__(self, cipher_text, key_length=None,
+                 train_ngrams={}, predefined_keys=None):
         self.cipher_text = cipher_text
-
-        if train_text is not None and ngram_size is not None:
-            ngrams = split_to_ngrams(train_text, ngram_size)
-            self.train_ngrams = calc_freq(ngrams)
-            self.ngram_size = ngram_size
-        elif train_ngrams is not None:
-            self.train_ngrams = train_ngrams
-            first_ngram = list(train_ngrams.keys())[0]
-            self.ngram_size = len(first_ngram)
-        elif ngram_file is not None:
-            self.train_ngrams = parse_ngrams(ngram_file)
-            first_ngram = list(self.train_ngrams.keys())[0]
-            self.ngram_size = len(first_ngram)
-        print('N-grams generated')
+        self.train_ngrams = train_ngrams
 
         self.current_generation = 0
         self.best_solution: Tuple[Individ, float] = None
         self.generation = [Key.random]
+
         if predefined_keys is None:
             self.generation = [Individ.random(key_length,
                                               string.ascii_uppercase)
@@ -116,9 +121,11 @@ class PolyGA(BaseGA):
             self.generation = [Individ(predefined_keys)
                                for _ in range(self.population_size)]
             self.key_length = len(predefined_keys)
+
         self.tournament_probabilities = calc_tournament_probabilities(
             self.tournament_win_prob,
             self.tournament_size)
+
         self.unchanged_gens = 0
 
     def step(self):
@@ -150,8 +157,8 @@ class PolyGA(BaseGA):
         for p1, p2 in parents:
             c1, c2 = p1, p2
             if prob(self.crossover_probability):
-                c1 = c1.crossover(c2, self.crossover_k_count)
-                c2 = c2.crossover(c1, self.crossover_k_count)
+                c1, c2 = (c1.crossover(c2, self.crossover_k_count),
+                          c2.crossover(c1, self.crossover_k_count))
             if prob(self.mutation_probability):
                 c1, c2 = c1.mutate(), c2.mutate()
             next_generation.append(c1)
@@ -170,28 +177,54 @@ class PolyGA(BaseGA):
             #     print(dec)
 
     def fitness(self, individ: Individ):
-        decoded = individ.decode(self.cipher_text)
-        decoded_ngrams = split_to_ngrams(decoded, self.ngram_size)
-        decoded_freq = calc_freq(decoded_ngrams)
+        result = 0
+        for ngram_size, train_ngrams in self.train_ngrams.items():
+            decoded = individ.decode(self.cipher_text)
+            dec_ngrams = split_to_ngrams(decoded, ngram_size)
+            dec_freq = calc_freq(dec_ngrams)
 
-        def F(ngram):
-            ft = self.train_ngrams.get(ngram, 0)
-            if ft == 0:
-                return 0
-            fp = decoded_freq.get(ngram, 0)
-            return fp * math.log2(ft)
+            def F(ngram):
+                ft = train_ngrams.get(ngram, 0)
+                if ft == 0:
+                    return 0
+                fp = dec_freq.get(ngram, 0)
+                return fp * math.log2(ft)
 
-        return sum(map(F, decoded_freq.keys()))
+            fitness = sum(map(F, dec_freq.keys()))
+            result += fitness
+        return result
+        # decoded = individ.decode(self.cipher_text)
+        # decoded_ngrams = split_to_ngrams(decoded, self.ngram_size)
+        # decoded_freq = calc_freq(decoded_ngrams)
+
+        # def F(ngram):
+        #     ft = self.train_ngrams.get(ngram, 0)
+        #     if ft == 0:
+        #         return 0
+        #     fp = decoded_freq.get(ngram, 0)
+        #     return fp * math.log2(ft)
+
+        # return sum(map(F, decoded_freq.keys()))
 
     def selection(self, fitnesses):
         sorted_fenotypes = sorted(zip(self.generation, fitnesses),
                                   key=lambda item: item[1],
                                   reverse=True)
+        for sf in sorted_fenotypes:
+            print(sf[1])
         tournament_pool = [ft[0] for ft
                            in list(sorted_fenotypes)[:self.tournament_size]]
-        return [random.choices(tournament_pool, k=2,
-                               weights=self.tournament_probabilities)
-                for _ in range(self.population_size // 2)]
+        # return [random.choices(tournament_pool, k=2,
+        #                        weights=self.tournament_probabilities)
+        #         for _ in range(self.population_size // 2)]
+        result = []
+        i = 0
+        for _ in range(self.population_size // 2):
+            c1 = tournament_pool[i]
+            c2 = tournament_pool[(i + 1) % self.tournament_size]
+            i = (i + 1) % self.tournament_size
+            result.append([c1, c2])
+        return result
 
     def terminate(self):
         self.current_generation = self.generation_count
