@@ -4,13 +4,19 @@ import (
 	"log"
 	"math"
 	"sort"
-	"time"
+	"sync"
 
 	"github.com/mroth/weightedrand"
 )
 
+const (
+	STATUS_BETTER = iota
+	STATUS_SAME
+	STATUS_WORSE
+)
+
 type PolyGA struct {
-	cipherText           string
+	cipherText           []rune
 	trainNgrams          NgramSet
 	nGeneration          int
 	unchangedGenerations int
@@ -18,6 +24,7 @@ type PolyGA struct {
 	currentGen           []Individ
 	bestIndivid          Individ
 	bestFitness          float64
+	status               int
 }
 
 type fitnessIndividual struct {
@@ -30,60 +37,84 @@ type parents struct {
 	snd Individ
 }
 
-func NewPolyGA(cipherText string, keyLen int) *PolyGA {
+func NewPolyGA(cipherText string, keyLen int) PolyGA {
+	if population_size < tournament_size {
+		panic("Tournament size must be <= of generation size")
+	}
 	generation := make([]Individ, population_size)
-
 	for i := range generation {
 		generation[i] = randomIndivid(keyLen)
 	}
-	return &PolyGA{
-		cipherText:  cipherText,
+
+	return PolyGA{
+		cipherText:  []rune(cipherText),
 		trainNgrams: ParseFreqs(),
 		keyLen:      keyLen,
 		currentGen:  generation,
 	}
 }
 
+func NewPolyGAwKeys(cipherText string, keys []string) PolyGA {
+	if population_size < tournament_size {
+		panic("Tournament size must be <= of generation size")
+	}
+	generation := make([]Individ, population_size)
+	nKeys := len(keys)
+	for i := range generation {
+		keysCopy := make([]Key, nKeys)
+		for i := range keys {
+			keysCopy[i] = Key{[]rune(keys[i])}
+		}
+		generation[i] = Individ{keysCopy}
+	}
+
+	return PolyGA{
+		cipherText:  []rune(cipherText),
+		trainNgrams: ParseFreqs(),
+		keyLen:      keyLen,
+		currentGen:  generation,
+	}
+	// if len(keys) != self.
+	// B ONG K ATULATIO
+}
+
 func (self *PolyGA) step() {
 	self.nGeneration++
 
-	indFit := make([]fitnessIndividual, population_size)
-	for i, ind := range self.currentGen {
-		fitness := self.fitness(&ind)
-		indFit[i] = fitnessIndividual{ind, fitness}
-	}
+	indFit := self.individFitnessesPar()
+
 	sortCb := func(i, j int) bool {
 		return indFit[i].fitness >= indFit[j].fitness
 	}
 	sort.Slice(indFit, sortCb)
-	for _, indFit := range indFit {
-		log.Println(indFit.fitness)
+
+	newBest := indFit[0].fitness
+
+	if partialEq(newBest, self.bestFitness) {
+		self.unchangedGenerations++
+		self.status = STATUS_SAME
+	} else if newBest > self.bestFitness {
+		self.unchangedGenerations = 0
+		self.status = STATUS_BETTER
+	} else {
+		self.status = STATUS_WORSE
 	}
 
-	if indFit[0].fitness > self.bestFitness {
-		self.unchangedGenerations = 0
-	} else {
-		self.unchangedGenerations++
-	}
 	self.bestFitness = indFit[0].fitness
 	self.bestIndivid = indFit[0].individ
 
 	parents := self.selection(indFit)
-	nextGeneration := make([]Individ, 0, population_size)
+	self.currentGen = make([]Individ, 0, population_size)
+
 	for _, p := range parents {
 		c1, c2 := p.get()
 		if isProbably(crossover_probability) {
-			c1, c2 = c1.crossover(c2), c2.crossover(c1)
+			c1, c2 = crossover(c1, c2)
 		}
 		if isProbably(mutation_probability) {
 			c1, c2 = c1.mutate(), c2.mutate()
 		}
-		nextGeneration = append(nextGeneration, c1, c2)
-	}
-	self.currentGen = nextGeneration
-
-	if dbgDelay > 0 {
-		time.Sleep(time.Millisecond * dbgDelay)
+		self.currentGen = append(self.currentGen, c1, c2)
 	}
 }
 
@@ -91,6 +122,7 @@ func (self parents) get() (Individ, Individ) {
 	return self.fst, self.snd
 }
 
+// "Dumb" selection procedure
 // func (self *PolyGA) selection(data []fitnessIndividual) []parents {
 // 	tournament := data[:tournament_size]
 // 	result := make([]parents, population_size/2)
@@ -145,56 +177,70 @@ func (self *PolyGA) Run() {
 }
 
 func (self *PolyGA) report() {
-	log.Printf(
-		"%v; fitness: %v; key:\n",
-		self.unchangedGenerations,
-		self.bestFitness,
-	)
+	var strStatus string
+	switch self.status {
+	case STATUS_WORSE:
+		strStatus = "Worse"
+	case STATUS_SAME:
+		strStatus = "Same  "
+	case STATUS_BETTER:
+		strStatus = "Better"
+	}
+
+	log.Printf("%-7v fitness: %v; key:\n", strStatus, self.bestFitness)
+
 	for _, k := range self.bestIndivid.keys {
 		log.Printf("|%v|\n", string(k.key))
 	}
-	log.Println(self.bestIndivid.decode(self.cipherText))
-	time.Sleep(time.Millisecond * 100)
+	decoded := self.bestIndivid.decode(self.cipherText)
+	log.Println(string(decoded))
+	log.Println()
 }
 
 func (self *PolyGA) fitness(individ *Individ) (result float64) {
-	// ch, wg := make(chan float64), sync.WaitGroup{}
-
 	for ngramSize, trainFreqs := range self.trainNgrams {
 		decoded := individ.decode(self.cipherText)
 		decodedNgrams := splitToNgrams(decoded, ngramSize)
 		decodedFreqs := countFreqs(decodedNgrams)
-
 		for ngram, fp := range decodedFreqs {
 			if ft, ok := trainFreqs[ngram]; ok && ft > 0 {
 				result += float64(fp) * math.Log2(float64(ft))
-				// ch <- float64(fp) * math.Log2(float64(ft))
 			}
 		}
+	}
+	return
+}
 
-		// wg.Add(1)
-		// go func(ngramSize int, trainFreqs NgramFreqMap, ch chan float64) {
-		// 	defer wg.Done()
-		// 	decoded := individ.decode(self.cipherText)
-		// 	decodedNgrams := splitToNgrams(decoded, ngramSize)
-		// 	decodedFreqs := countFreqs(decodedNgrams)
+func (self *PolyGA) individFitnessesPar() []fitnessIndividual {
+	result := make([]fitnessIndividual, 0, population_size)
+	wg, ch := sync.WaitGroup{}, make(chan fitnessIndividual)
 
-		// 	for ngram, fp := range decodedFreqs {
-		// 		if ft, ok := trainFreqs[ngram]; ok && ft > 0 {
-		// 			ch <- float64(fp) * math.Log2(float64(ft))
-		// 		}
-		// 	}
-		// }(ngramSize, trainFreqs, ch)
+	for _, ind := range self.currentGen {
+		wg.Add(1)
+		go func(self *PolyGA, ind Individ, ch chan<- fitnessIndividual) {
+			defer wg.Done()
+			fitness := self.fitness(&ind)
+			ch <- fitnessIndividual{ind, fitness}
+		}(self, ind, ch)
 	}
 
-	// go func() {
-	// 	wg.Wait()
-	// 	close(ch)
-	// }()
+	go func(result *[]fitnessIndividual, ch <-chan fitnessIndividual) {
+		for c := range ch {
+			*result = append(*result, c)
+		}
+	}(&result, ch)
 
-	// for i := range ch {
-	// 	result += i
-	// }
+	wg.Wait()
+	close(ch)
 
-	return
+	return result
+}
+
+func (self *PolyGA) individFitnesses() []fitnessIndividual {
+	result := make([]fitnessIndividual, population_size)
+	for i, ind := range self.currentGen {
+		fitness := self.fitness(&ind)
+		result[i] = fitnessIndividual{ind, fitness}
+	}
+	return result
 }

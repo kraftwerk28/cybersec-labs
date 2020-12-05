@@ -5,6 +5,8 @@ import (
 	"math/rand"
 )
 
+type ngram []rune
+
 func alphabet2map(alphabet []rune) map[rune]int {
 	m := make(map[rune]int)
 	for i, letter := range alphabet {
@@ -13,18 +15,18 @@ func alphabet2map(alphabet []rune) map[rune]int {
 	return m
 }
 
-func groups(text string, keyLen int) [][]rune {
-	ans := make([][]rune, keyLen)
+func groups(text []rune, keyLen int) (result [][]rune) {
+	result = make([][]rune, keyLen)
 	i := 0
 	for _, char := range text {
-		ans[i] = append(ans[i], char)
+		result[i] = append(result[i], char)
 		i = (i + 1) % keyLen
 	}
-	return ans
+	return
 }
 
-func ungroups(groups [][]rune) string {
-	result := make([]rune, 0)
+func ungroups(groups [][]rune) (result []rune) {
+	result = make([]rune, 0)
 	i := 0
 	for {
 		if len(groups[i]) == 0 {
@@ -35,23 +37,46 @@ func ungroups(groups [][]rune) string {
 		result = append(result, r)
 		i = (i + 1) % len(groups)
 	}
-	return string(result)
+	return
 }
 
 func isProbably(prob float64) bool {
 	return rand.Float64() < prob
 }
 
-func splitToNgrams(str string, ngramSize int) []string {
-	nngrams := len(str) - ngramSize + 1
-	result := make([]string, nngrams)
+func splitToNgrams(text []rune, ngramSize int) (result []ngram) {
+	nngrams := len(text) - ngramSize + 1
+	result = make([]ngram, nngrams)
 	for i := 0; i < nngrams; i++ {
-		result[i] = str[i : i+ngramSize]
+		result[i] = text[i : i+ngramSize]
 	}
-	return result
+	return
 }
 
-func countFreqs(ngrams []string) NgramFreqMap {
+func splitToNgramsWhitespaced(text []rune, ngramSize int) (result []ngram) {
+	var idx int
+	currentChunk := make([]rune, 0)
+	for {
+		if idx >= len(text) {
+			break
+		}
+		if text[idx] == ' ' {
+			if len(currentChunk) >= ngramSize {
+				result = append(result, splitToNgrams(currentChunk, ngramSize)...)
+			}
+			currentChunk = make([]rune, 0)
+		} else {
+			currentChunk = append(currentChunk, text[idx])
+		}
+		idx++
+	}
+	if len(currentChunk) >= ngramSize {
+		result = append(result, splitToNgrams(currentChunk, ngramSize)...)
+	}
+	return
+}
+
+func countFreqs(ngrams []ngram) NgramFreqMap {
 	result := make(map[string]int)
 	for _, w := range ngrams {
 		result[string(w)]++
@@ -69,4 +94,49 @@ func calcTournProb(initial float64, tournament_size int) []uint {
 		ans = append(ans, floored)
 	}
 	return ans
+}
+
+func partialEq(a, b float64) bool {
+	return math.Abs(a-b) < epsilon
+}
+
+func getSpacePositions(text string) map[int]bool {
+	result := make(map[int]bool)
+	var idx int
+	for _, c := range text {
+		if c == ' ' {
+			result[idx] = true
+		} else {
+			idx++
+		}
+	}
+	return result
+}
+
+func insertWhiteSpaces(raw []rune, positions map[int]bool) []rune {
+	result := make([]rune, 0, len(raw)+len(positions))
+	for i, c := range raw {
+		if _, isWS := positions[i]; isWS {
+			result = append(result, ' ')
+		}
+		result = append(result, c)
+	}
+	return result
+}
+
+func insertWhiteSpace(cipher, text string) string {
+	textLen := len(text)
+	ciphRunes := []rune(cipher)
+	resRunes := make([]rune, 0, textLen)
+	var idx int
+	for _, c := range text {
+		_, exists := alphMap[c]
+		if exists {
+			resRunes = append(resRunes, ciphRunes[idx])
+			idx++
+		} else {
+			resRunes = append(resRunes, ' ')
+		}
+	}
+	return string(resRunes)
 }
