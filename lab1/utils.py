@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import os
 import math
 from matplotlib import pyplot as plt
 import matplotlib
@@ -94,7 +95,9 @@ def IoC(text, alphabet=ALPHABET):
     tl = len(text)
     for letter in alphabet:
         occ = sum(letter == x for x in text)
-        ans += (occ * (occ - 1)) / (tl * (tl - 1))
+        a, b = occ * (occ - 1), tl * (tl - 1)
+        if b != 0:
+            ans += a / b
     return ans
 
 
@@ -138,12 +141,6 @@ def split_to_ngrams(text, t):
             for i in range(len(text) - t + 1)]
 
 
-# def multi_ngram_freq(text, ngram_sizes):
-#     result = {s:[] for s in ngram_sizes}
-#     counters = [0 for _ in ngram_sizes]
-#     return result
-
-
 def ngram_freq(ngrams):
     return {ngram: ngrams.count(ngram) for ngram in ngrams}
 
@@ -180,8 +177,20 @@ def calc_tournament_probabilities(initial, tournament_size):
 def prob(probability: float):
     return random.random() < probability
 
-# def chi_squared(text, expected=EXPECTED,
-#                 alphabet=ALPHABET):
-#     return sum((sum(letter == x for x in text) - expected[index]) ** 2 /
-#                expected[index]
-#                for index, letter in enumerate(alphabet))
+
+def fitness(raw_text, alphabet, train_ngrams):
+    result = 0
+    for ngram_size, train_ngrams in train_ngrams.items():
+        raw_ngrams = split_to_ngrams(raw_text, ngram_size)
+        raw_freq = calc_freq(raw_ngrams)
+
+        def F(ngram):
+            ft = train_ngrams.get(ngram, 0)
+            if ft == 0:
+                return 0
+            fp = raw_freq.get(ngram, 0)
+            return fp * math.log2(ft)
+
+        fitness = sum(map(F, raw_freq.keys()))
+        result += fitness
+    return result

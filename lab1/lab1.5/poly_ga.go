@@ -37,7 +37,7 @@ type parents struct {
 	snd Individ
 }
 
-func NewPolyGA(cipherText string, keyLen int) PolyGA {
+func NewPolyGA(cipherText []rune, keyLen int, trainNgrams NgramSet) PolyGA {
 	if population_size < tournament_size {
 		panic("Tournament size must be <= of generation size")
 	}
@@ -47,14 +47,18 @@ func NewPolyGA(cipherText string, keyLen int) PolyGA {
 	}
 
 	return PolyGA{
-		cipherText:  []rune(cipherText),
-		trainNgrams: ParseFreqs(),
+		cipherText:  cipherText,
+		trainNgrams: trainNgrams,
 		keyLen:      keyLen,
 		currentGen:  generation,
 	}
 }
 
-func NewPolyGAwKeys(cipherText string, keys []string) PolyGA {
+func NewPolyGAwKeys(
+	cipherText string,
+	keys []string,
+	trainNgrams NgramSet,
+) PolyGA {
 	if population_size < tournament_size {
 		panic("Tournament size must be <= of generation size")
 	}
@@ -70,7 +74,7 @@ func NewPolyGAwKeys(cipherText string, keys []string) PolyGA {
 
 	return PolyGA{
 		cipherText:  []rune(cipherText),
-		trainNgrams: ParseFreqs(),
+		trainNgrams: trainNgrams,
 		keyLen:      keyLen,
 		currentGen:  generation,
 	}
@@ -194,7 +198,6 @@ func (self *PolyGA) report() {
 	}
 	decoded := self.bestIndivid.decode(self.cipherText)
 	log.Println(string(decoded))
-	log.Println()
 }
 
 func (self *PolyGA) fitness(individ *Individ) (result float64) {

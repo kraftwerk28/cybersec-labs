@@ -11,9 +11,9 @@ import (
 	"sync"
 )
 
-const ngramSetLength = 3
+const ngramSetLength = 2
 
-func getNgramPath(n int) string {
+func getNgramPath(root string, n int) string {
 	var wd string
 	switch n {
 	case 3:
@@ -25,25 +25,20 @@ func getNgramPath(n int) string {
 	default:
 		panic("Ngram length not supported")
 	}
-	return fmt.Sprintf("ngrams/english_%sgrams.txt", wd)
+	return path.Join(root, fmt.Sprintf("english_%sgrams.txt", wd))
 }
 
 type NgramFreqMap map[string]int
 type NgramSet map[int]NgramFreqMap
 
 func ParseFreq(filepath string) NgramFreqMap {
-	cwd, err := os.Getwd()
 	result := make(map[string]int)
-	if err != nil {
-		panic(err)
-	}
 
-	fpath := path.Join(cwd, "..", filepath)
-	fptr, err := os.Open(fpath)
-	if err != nil {
-		log.Fatalf("Failed to open file %v\n", fpath)
-	}
+	fptr, err := os.Open(filepath)
 	defer fptr.Close()
+	if err != nil {
+		log.Fatalf("Failed to open file %v\n", filepath)
+	}
 
 	scanner := bufio.NewScanner(fptr)
 	for scanner.Scan() {
@@ -57,12 +52,12 @@ func ParseFreq(filepath string) NgramFreqMap {
 	return result
 }
 
-func ParseFreqs() map[int]NgramFreqMap {
+func ParseFreqs(path string) map[int]NgramFreqMap {
 	result := make(map[int]NgramFreqMap, ngramSetLength)
 	wg := sync.WaitGroup{}
 	wg.Add(ngramSetLength)
 	for i := 3; i < 3+ngramSetLength; i++ {
-		path := getNgramPath(i)
+		path := getNgramPath(path, i)
 		go func(k int, v string) {
 			defer wg.Done()
 			result[k] = ParseFreq(v)

@@ -14,7 +14,7 @@ m4 = """EFFPQLEKVTVPCPYFLMVHQLUEWCNVWFYGHYTCETHQEKLPVMSAKSPVPAPVYWMVHQLUSPQLYWLA
 
 
 if __name__ == '__main__':
-    # plot_ioc(m, string.ascii_uppercase)
+    plot_ioc(m, string.ascii_uppercase)
 
     # ngrams = {3: 'english_trigrams.txt/english_trigrams.txt',
     #           4: 'english_quadgrams.txt/english_quadgrams.txt',

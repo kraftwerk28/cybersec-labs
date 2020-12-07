@@ -20,7 +20,8 @@ if __name__ == '__main__':
         mm = mm[2:]
 
     # Used to find key length
-    plot_ioc(message, alphabet=alphabet)
+    # plot_ioc(m)
+    # plot_ioc(message, alphabet=alphabet)
 
     # key_len = 3
     # maybe_words = ['the', ' ', 'cipher']
