@@ -16,26 +16,28 @@ def hex2bytes(s):
 
 
 if __name__ == '__main__':
-    trigrams = parse_ngrams('../lab1/ngrams/english_trigrams.txt')
+    root = os.path.dirname(__file__)
+    path = os.path.join(root, '../lab1/ngrams/english_trigrams.txt')
+    trigrams = parse_ngrams(path)
     ngram_set = {3: trigrams}
 
-    with open('input.txt') as f:
+    with open(os.path.join(root, 'input.txt')) as f:
         inputs = [s.strip() for s in f.readlines()]
 
     inpbytes = [hex2bytes(s) for s in inputs]
 
     for idx, line in enumerate(inpbytes):
         output = ['_'] * len(line)
-        for l in inpbytes[:idx] + inpbytes[idx+1:]:
+        for l in inpbytes[:idx] + inpbytes[idx + 1:]:
             for charidx, (b1, b2) in enumerate(zip(line, l)):
                 xored = b1 ^ b2
                 next_str = output[:]
                 if xored in range(65, 91):
                     next_str[charidx] = chr(xored)
-                fitn1, fitn2 = (
-                    fitness(output, string.ascii_uppercase, ngram_set),
-                    fitness(next_str, string.ascii_uppercase, ngram_set)
-                )
+                fitn1, fitn2 = (fitness(output, string.ascii_uppercase,
+                                        ngram_set),
+                                fitness(next_str, string.ascii_uppercase,
+                                        ngram_set))
                 if fitn2 >= fitn1:
                     output = next_str
         print(''.join(output))
