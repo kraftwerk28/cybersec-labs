@@ -1,92 +1,70 @@
 use crate::{
-    models::*,
+    error::Error,
+    handlers,
     utils::{noauth401, Ctx},
 };
-use log::error;
-use std::convert::Infallible;
-use warp::{
-    http::{Response, StatusCode},
-    reject, Filter, Rejection, Reply,
-};
-
-macro_rules! Rpl {
-    () => (Rpl!(impl Reply));
-    ($t:ty) => (Rpl!($t, Rejection));
-    ($ex:ty, $er: ty) => (impl Filter<Extract = $ex, Error = $er> + Clone);
-}
+use std::{convert::Infallible, net::SocketAddr};
+use warp::{reject, Filter, Rejection, Reply};
 
 /// Example
-fn with_ctx(ctx: Ctx) -> Rpl!((Ctx,), Infallible) {
+fn with_ctx(ctx: Ctx) -> rpl!((Ctx,), Infallible) {
     warp::any().map(move || ctx.clone())
 }
 
-fn login_nocreds() -> Rpl!() {
+fn login_nocreds() -> rpl!() {
     warp::path("login").map(|| noauth401())
 }
 
-pub fn login(ctx: Ctx) -> Rpl!() {
-    warp::path("login")
+fn rate_limit(ctx: Ctx) -> rpl!(()) {
+    warp::any()
         .and(with_ctx(ctx))
-        .and(warp::post())
-        .and(warp::body::json())
-        .and_then(|ctx: Ctx, creds: LoginCreds| async move {
-            ctx.db
-                .query(
-                    "SELECT * FROM USERS WHERE email = $1 AND pwd_hash = $2",
-                    &[&creds.email, &creds.password],
-                )
-                .await
-                .map(|rows| {
-                    if rows.is_empty() {
-                        noauth401()
+        .and(warp::addr::remote())
+        .and_then(|ctx: Ctx, ip: Option<SocketAddr>| async move {
+            let mut rl = ctx.rate_limiter.lock().unwrap();
+            match ip {
+                Some(addr) => {
+                    if rl.check_ip(addr.ip()) {
+                        let e = Error::TooManyRequests(addr.ip());
+                        Err(reject::custom(e))
                     } else {
-                        Response::builder()
-                            .status(StatusCode::OK)
-                            .body("Authorized")
+                        Ok(())
                     }
-                })
-                .map_err(|_| warp::reject())
+                }
+                _ => Ok(()),
+            }
         })
+        .untuple_one()
 }
 
-pub fn register(ctx: Ctx) -> Rpl!() {
+pub fn login(ctx: Ctx) -> rpl!() {
+    warp::path("login")
+        .and(with_ctx(ctx.clone()))
+        .and(rate_limit(ctx))
+        .and(warp::post())
+        .and(warp::body::json())
+        .and_then(handlers::login)
+        .recover(handlers::error)
+}
+
+pub fn register(ctx: Ctx) -> rpl!() {
     warp::path("register")
         .and(with_ctx(ctx))
         .and(warp::post())
         .and(warp::body::json())
-        .and_then(|ctx: Ctx, creds: RegisterCreds| async move {
-            ctx.db
-                .execute(
-                    "INSERT INTO users (email, pwd_hash) VALUES ($1, $2)",
-                    &[&creds.email, &creds.password],
-                )
-                .await
-                .map_err(|e| {
-                    error!("{:?}", e);
-                    reject::reject()
-                })
-                .map(|_| warp::reply::with_status("", StatusCode::NO_CONTENT))
-        })
+        .and_then(handlers::register)
 }
 
-pub fn get_users(ctx: Ctx) -> Rpl!() {
-    warp::path("users").and(with_ctx(ctx)).and_then(
-        move |ctx: Ctx| async move {
-            ctx.db
-                .query("SELECT * FROM users", &[])
-                .await
-                .map(|rows| rows.iter().map(User::from).collect::<Vec<_>>())
-                .map(|c| warp::reply::json(&c))
-                .map_err(|_| reject::reject())
-        },
-    )
+pub fn get_users(ctx: Ctx) -> rpl!() {
+    warp::path("users")
+        .and(with_ctx(ctx))
+        .and_then(handlers::get_users)
 }
 
-pub fn static_srv(ctx: Ctx) -> Rpl!() {
+pub fn static_srv(ctx: Ctx) -> rpl!() {
     warp::get().and(warp::fs::dir(ctx.public_path))
 }
 
-pub fn root_route(ctx: Ctx) -> Rpl!() {
+pub fn root_route(ctx: Ctx) -> rpl!() {
     get_users(ctx.clone())
         .or(login(ctx.clone()))
         .or(login_nocreds())
