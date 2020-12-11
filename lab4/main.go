@@ -94,7 +94,7 @@ func main() {
 	}
 
 	wg := sync.WaitGroup{}
-	wg.Add(3)
+	wg.Add(1)
 
 	go func(wg *sync.WaitGroup, outPath string, count int) {
 		defer wg.Done()
