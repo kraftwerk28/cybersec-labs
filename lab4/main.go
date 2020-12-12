@@ -1,12 +1,14 @@
 package main
 
 import (
+	"bufio"
 	"crypto/md5"
 	"crypto/sha1"
 	"encoding/base64"
 	"encoding/csv"
 	"encoding/hex"
 	"flag"
+	"fmt"
 	"math/rand"
 	"os"
 	"path"
@@ -28,7 +30,7 @@ func genMD5(password string) []string {
 func genSHA1(password string) []string {
 	salt := make([]byte, 16)
 	rand.Read(salt)
-	hash := sha1.Sum([]byte(password))
+	hash := sha1.Sum([]byte(password + string(salt)))
 	return []string{b64enc(hash[:]), h16enc(salt)}
 }
 
@@ -82,40 +84,70 @@ func genCSV(
 	wg.Wait()
 }
 
+func genHumanLike(
+	outpath string,
+	count int,
+	progresschan chan<- struct{},
+) {
+	fd, err := os.Create(outpath)
+	defer fd.Close()
+	if err != nil {
+		panic(err)
+	}
+	sc, gen := bufio.NewWriter(fd), NewPwdGen()
+	for i := 0; i < count; i++ {
+		password := gen.humanlike()
+		fmt.Fprintln(sc, password)
+		progresschan <- struct{}{}
+	}
+	sc.Flush()
+}
+
 func main() {
 	rand.Seed(time.Now().UnixNano())
 	floutPath := flag.String("o", "out", "Output dir")
 	flcount := flag.Int("c", 1000, "Count of hashes to generate")
+	flgenWords := flag.Bool("p", false, "Generate list of human-like passwords")
 	flag.Parse()
+
 	count, outPath := *flcount, *floutPath
 	procCount := 3
-	totalCount := procCount * count
 
-	if _, err := os.Stat(outPath); os.IsNotExist(err) {
+	if _, err := os.Stat(outPath); os.IsNotExist(err) && !*flgenWords {
 		os.Mkdir(outPath, os.ModePerm)
 	}
-
 	wg, progresschan := sync.WaitGroup{}, make(chan struct{})
-	wg.Add(procCount)
 
-	go func(outPath string, count int) {
-		defer wg.Done()
-		path := path.Join(outPath, "md5.csv")
-		genCSV(path, count, []string{"hash"}, genMD5, progresschan)
-	}(outPath, count)
+	if *flgenWords {
+		procCount = 1
+		wg.Add(procCount)
+		go func() {
+			defer wg.Done()
+			genHumanLike(outPath, count, progresschan)
+		}()
+	} else {
+		wg.Add(procCount)
 
-	go func(outPath string, count int) {
-		defer wg.Done()
-		path := path.Join(outPath, "sha1.csv")
-		genCSV(path, count, []string{"hash", "salt"}, genSHA1, progresschan)
-	}(outPath, count)
+		go func(outPath string, count int) {
+			defer wg.Done()
+			path := path.Join(outPath, "md5.csv")
+			genCSV(path, count, []string{"hash"}, genMD5, progresschan)
+		}(outPath, count)
+
+		go func(outPath string, count int) {
+			defer wg.Done()
+			path := path.Join(outPath, "sha1.csv")
+			genCSV(path, count, []string{"hash", "salt"}, genSHA1, progresschan)
+		}(outPath, count)
 
 		go func(wg *sync.WaitGroup, outPath string, count int) {
 			defer wg.Done()
 			path := path.Join(outPath, "bcrypt.csv")
 			genCSV(path, count, []string{"hash"}, genBcrypt, progresschan)
 		}(&wg, outPath, count)
+	}
 
+	totalCount := procCount * count
 	bar := pb.StartNew(totalCount)
 	go func() {
 		for range progresschan {

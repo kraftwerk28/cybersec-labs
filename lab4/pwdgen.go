@@ -71,21 +71,25 @@ func randWord(list []string) string {
 }
 
 func (pwdgen *PwdGen) humanlike() string {
-	pwdlen := rand.Intn(6) + 16
-	result := make([]rune, 0, pwdlen)
-	for len(result) < pwdlen {
+	pwdlen := rand.Intn(4) + 16
+	result := make([]rune, 0)
+	for {
 		chrTypeIdx := rand.Float64()
+		var wordPart string
 		if chrTypeIdx < 0.65 {
-			word := randWord(pwdgen.commonWords)
-			result = append(result, []rune(word)...)
+			wordPart = randWord(pwdgen.commonWords)
 		} else if chrTypeIdx < 0.9 {
-			result = append(result, rune(rand.Intn(10)+48))
+			wordPart = string(rune(rand.Intn(10) + 48))
 		} else {
 			idx := rand.Intn(len(pwdgen.randPwdCharset))
-			result = append(result, pwdgen.randPwdCharset[idx])
+			wordPart = string(pwdgen.randPwdCharset[idx])
 		}
+		if len(wordPart)+len(result) > pwdlen {
+			break
+		}
+		result = append(result, []rune(wordPart)...)
 	}
-	return string(result[:pwdlen])
+	return string(result)
 }
 
 func (pwdgen *PwdGen) Gen() func() string {
@@ -98,10 +102,10 @@ func (pwdgen *PwdGen) Gen() func() string {
 		return pwdgen.common110Passwords[rand.Intn(l)]
 	}
 	wr, err := weightedrand.NewChooser(
-		weightedrand.NewChoice(get100k, 10),
-		weightedrand.NewChoice(get110, 75),
-		weightedrand.NewChoice(pwdgen.randPassword, 5),
-		weightedrand.NewChoice(pwdgen.humanlike, 10),
+		weightedrand.NewChoice(get100k, 75),
+		weightedrand.NewChoice(get110, 700),
+		weightedrand.NewChoice(pwdgen.randPassword, 30),
+		weightedrand.NewChoice(pwdgen.humanlike, 195),
 	)
 	if err != nil {
 		panic(err)
