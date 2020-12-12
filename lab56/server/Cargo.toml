@@ -15,5 +15,7 @@ tokio = { version = "^0.2", features = ["macros"] }
 serde = { version = "*", features = ["derive"] }
 tokio-postgres = { version = "^0.5", features = ["runtime"] }
 dotenv = "*"
-rust-argon2 = "0.8"
 base64 = "*"
+
+rust-argon2 = "0.8"
+aes-gcm = "0.8.0"

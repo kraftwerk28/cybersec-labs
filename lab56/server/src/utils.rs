@@ -61,7 +61,7 @@ pub async fn connect() -> Client {
     client
 }
 
-type UserID = i32;
+pub type UserID = i32;
 type TokenStorage = Arc<Mutex<HashMap<String, UserID>>>;
 #[derive(Clone)]
 pub struct Ctx {
@@ -70,18 +70,22 @@ pub struct Ctx {
     pub rate_limiter: Arc<Mutex<RateLimiter>>,
     pub argon_config: argon2::Config<'static>,
     pub tokens: TokenStorage,
+    pub aead_secred: String,
 }
 
 impl Ctx {
     pub fn new(public_path: String, db: Client, rate_limiter: RateLimiter) -> Self {
         let mut argon_config = argon2::Config::default();
         argon_config.variant = argon2::Variant::Argon2id;
+        argon_config.thread_mode = argon2::ThreadMode::Sequential;
+
         Self {
             public_path,
             db: Arc::new(db),
             rate_limiter: Arc::new(Mutex::new(rate_limiter)),
             argon_config,
             tokens: TokenStorage::default(),
+            aead_secred: rtenv!("AEAD_KEY" as String),
         }
     }
 
@@ -94,18 +98,4 @@ impl Ctx {
         let lck = self.tokens.lock().unwrap();
         lck.get(&token).map(|u| *u)
     }
-}
-
-pub fn hash(password: &str, config: &argon2::Config) -> String {
-    let salt = thread_rng().gen::<[u8; 16]>();
-    argon2::hash_encoded(password.as_bytes(), &salt, config).unwrap()
-}
-
-pub fn verify(hash: &str, password: &str) -> bool {
-    argon2::verify_encoded(hash, password.as_bytes()).unwrap()
-}
-
-pub fn make_token() -> String {
-    let raw = thread_rng().gen::<[u8; 16]>();
-    base64::encode(raw)
 }

@@ -6,6 +6,7 @@ pub enum Error {
     Unauthorized,
     DBErr,
     AlreadyExists,
+    InvalidHash
 }
 
 impl warp::reject::Reject for Error {}

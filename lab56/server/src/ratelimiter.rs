@@ -58,6 +58,7 @@ impl RateLimiter {
         if *counter < self.rate_limit {
             *counter += 1;
         }
+        log::info!("{:?}: {}", rec, *counter);
         *counter >= self.rate_limit
     }
 
