@@ -15,19 +15,21 @@ const (
 	crossover_k_count     = 20
 	crossover_probability = 0.35
 	tournament_win_prob   = 0.75
-	tournament_size       = 40
+	tournament_size       = 30
 
 	// After how many unchanged max fitness I should stop
 	unchanged_threshold = 50
 
 	// Used for fitness comparison
 	epsilon = 0.0000001
+
+	// 1 - trigrams, 2 - quadgrams + 1, 3 - quintgrams + 1 + 2
+	ngramSetLength = 3
 )
 
 func getAlphabet() []rune {
-	return []rune{}
-	// alph := "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz .,"
-	// return []rune(alph)
+	alph := "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	return []rune(alph)
 	// b := make([]rune, 26 + 26)
 	// for i := range b {
 	// 	b[i] = rune(i)

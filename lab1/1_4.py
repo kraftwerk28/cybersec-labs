@@ -12,7 +12,7 @@ m = """EFFPQLEKVTVPCPYFLMVHQLUEWCNVWFYGHYTCETHQEKLPVMSAKSPVPAPVYWMVHQLUSPQLYWLAS
 
 
 if __name__ == '__main__':
-    ngrams = {3: 'english_trigrams.txt/english_trigrams.txt'}
+    ngrams = {3: 'ngrams/english_trigrams.txt'}
     # ngrams = {3: 'english_trigrams.txt/english_trigrams.txt',
     #           4: 'english_quadgrams.txt/english_quadgrams.txt',
     #           5: 'english_quintgrams.txt/english_quintgrams.txt'}

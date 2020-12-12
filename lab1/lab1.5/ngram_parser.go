@@ -11,8 +11,6 @@ import (
 	"sync"
 )
 
-const ngramSetLength = 2
-
 func getNgramPath(root string, n int) string {
 	var wd string
 	switch n {

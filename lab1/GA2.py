@@ -210,8 +210,6 @@ class PolyGA(BaseGA):
         sorted_fenotypes = sorted(zip(self.generation, fitnesses),
                                   key=lambda item: item[1],
                                   reverse=True)
-        for sf in sorted_fenotypes:
-            print(sf[1])
         tournament_pool = [ft[0] for ft
                            in list(sorted_fenotypes)[:self.tournament_size]]
         # return [random.choices(tournament_pool, k=2,

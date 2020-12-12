@@ -2,11 +2,11 @@ package main
 
 import (
 	"encoding/hex"
+	"flag"
 	"io/ioutil"
 	"log"
 	"math/rand"
-	"os"
-	"sort"
+	_ "sort"
 	"time"
 )
 
@@ -58,37 +58,28 @@ func main() {
 		}
 	}
 
-	// ind := FromStrKeys(recentKeys)
-	// dec := ind.decode([]rune(ciphText5))
-	// log.Println(string(dec))
+	ngramDir := flag.String("n", "ngrams", "")
+	inputFname := flag.String("i", "", "")
+	keyLen := flag.Int("s", 1, "")
+	flag.Parse()
 
-	var inputFname string
-	ngramDir := "ngrams"
-	switch len(os.Args) {
-	case 2:
-		inputFname = os.Args[1]
-	case 3:
-		inputFname, ngramDir = os.Args[1], os.Args[2]
-	default:
-		log.Fatal("Unexpected arguments")
-	}
+	trainNgrams := ParseFreqs(*ngramDir)
+	ciphTextBytes, _ := ioutil.ReadFile(*inputFname)
+	ciphText := []rune(string(ciphTextBytes))
 
-	_ = ParseFreqs(ngramDir)
-	ciphText := prepare(inputFname)
-	log.Println(ciphText)
-	m := make(map[rune]bool)
-	for i := range ciphText {
-		m[ciphText[i]] = true
-	}
-	sl := make([]rune, 0, len(m))
-	for i := range m {
-		sl = append(sl, i)
-	}
-	sort.Slice(sl, func(i, j int) bool { return sl[i] < sl[j] })
-	log.Println(sl, len(sl))
+	// m := make(map[rune]bool)
+	// for i := range ciphText {
+	// 	m[ciphText[i]] = true
+	// }
+	// sl := make([]rune, 0, len(m))
+	// for i := range m {
+	// 	sl = append(sl, i)
+	// }
+	// sort.Slice(sl, func(i, j int) bool { return sl[i] < sl[j] })
+	// log.Println(sl, len(sl))
 
 	// ga := NewPolyGA(ciphText, 1, trainNgrams)
-	// ga := NewPolyGA(ciphText5, 4)
+	ga := NewPolyGA(ciphText, *keyLen, trainNgrams)
 	// ga := NewPolyGAwKeys(ciphText5, recentKeys)
-	// ga.Run()
+	ga.Run()
 }
