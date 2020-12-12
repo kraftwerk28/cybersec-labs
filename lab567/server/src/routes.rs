@@ -1,10 +1,6 @@
-use crate::{
-    error::Error,
-    handlers,
-    utils::{noauth401, Ctx},
-};
+use crate::{error::Error, handlers, utils::Ctx};
 use std::{convert::Infallible, net::SocketAddr};
-use warp::{reject, Filter, Rejection, Reply};
+use warp::{http::StatusCode, reject, reply, Filter, Rejection, Reply};
 
 /// Example
 fn with_ctx(ctx: Ctx) -> rpl!((Ctx,), Infallible) {
@@ -12,7 +8,7 @@ fn with_ctx(ctx: Ctx) -> rpl!((Ctx,), Infallible) {
 }
 
 fn login_nocreds() -> rpl!() {
-    warp::path("login").map(|| noauth401())
+    warp::path("login").map(|| reply::with_status("", StatusCode::UNAUTHORIZED))
 }
 
 fn rate_limit(ctx: Ctx) -> rpl!(()) {
@@ -31,6 +27,19 @@ fn rate_limit(ctx: Ctx) -> rpl!(()) {
                     }
                 }
                 _ => Ok(()),
+            }
+        })
+        .untuple_one()
+}
+
+fn check_auth(ctx: Ctx) -> rpl!(()) {
+    warp::cookie("token")
+        .and(with_ctx(ctx))
+        .and_then(|cookie: String, mut ctx: Ctx| async move {
+            if let Some(_) = ctx.check_token(cookie) {
+                Ok(())
+            } else {
+                Err(reject::custom(Error::Unauthorized))
             }
         })
         .untuple_one()
@@ -56,7 +65,8 @@ pub fn register(ctx: Ctx) -> rpl!() {
 
 pub fn get_users(ctx: Ctx) -> rpl!() {
     warp::path("users")
-        .and(with_ctx(ctx))
+        .and(with_ctx(ctx.clone()))
+        .and(check_auth(ctx))
         .and_then(handlers::get_users)
 }
 
@@ -65,9 +75,13 @@ pub fn static_srv(ctx: Ctx) -> rpl!() {
 }
 
 pub fn root_route(ctx: Ctx) -> rpl!() {
+    let cors = warp::cors()
+        .allow_any_origin()
+        .allow_methods(vec!["GET", "POST", "DELETE", "OPTIONS"]);
     get_users(ctx.clone())
         .or(login(ctx.clone()))
         .or(login_nocreds())
         .or(register(ctx.clone()))
         .or(static_srv(ctx.clone()))
+        .with(cors)
 }

@@ -16,3 +16,4 @@ serde = { version = "*", features = ["derive"] }
 tokio-postgres = { version = "^0.5", features = ["runtime"] }
 dotenv = "*"
 rust-argon2 = "0.8"
+base64 = "*"

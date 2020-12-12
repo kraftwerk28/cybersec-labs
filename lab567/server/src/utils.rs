@@ -1,6 +1,8 @@
 use crate::ratelimiter::RateLimiter;
 use log::{error, info};
+use rand::{thread_rng, Rng};
 use std::{
+    collections::HashMap,
     sync::{Arc, Mutex},
     time::Duration,
 };
@@ -59,26 +61,51 @@ pub async fn connect() -> Client {
     client
 }
 
+type UserID = i32;
+type TokenStorage = Arc<Mutex<HashMap<String, UserID>>>;
 #[derive(Clone)]
 pub struct Ctx {
     pub db: Arc<Client>,
     pub public_path: String,
     pub rate_limiter: Arc<Mutex<RateLimiter>>,
+    pub argon_config: argon2::Config<'static>,
+    pub tokens: TokenStorage,
 }
 
 impl Ctx {
     pub fn new(public_path: String, db: Client, rate_limiter: RateLimiter) -> Self {
+        let mut argon_config = argon2::Config::default();
+        argon_config.variant = argon2::Variant::Argon2id;
         Self {
             public_path,
             db: Arc::new(db),
             rate_limiter: Arc::new(Mutex::new(rate_limiter)),
+            argon_config,
+            tokens: TokenStorage::default(),
         }
+    }
+
+    pub fn add_token(&mut self, user_id: i32, token: String) {
+        let mut lck = self.tokens.lock().unwrap();
+        lck.insert(token, user_id);
+    }
+
+    pub fn check_token(&mut self, token: String) -> Option<UserID> {
+        let lck = self.tokens.lock().unwrap();
+        lck.get(&token).map(|u| *u)
     }
 }
 
-pub fn noauth401() -> Result<Response<&'static str>, Error> {
-    Response::builder()
-        .status(StatusCode::UNAUTHORIZED)
-        .header("WWW-Authenticate", "Basic realm=")
-        .body("")
+pub fn hash(password: &str, config: &argon2::Config) -> String {
+    let salt = thread_rng().gen::<[u8; 16]>();
+    argon2::hash_encoded(password.as_bytes(), &salt, config).unwrap()
+}
+
+pub fn verify(hash: &str, password: &str) -> bool {
+    argon2::verify_encoded(hash, password.as_bytes()).unwrap()
+}
+
+pub fn make_token() -> String {
+    let raw = thread_rng().gen::<[u8; 16]>();
+    base64::encode(raw)
 }

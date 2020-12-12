@@ -4,6 +4,8 @@ use std::net::IpAddr;
 pub enum Error {
     TooManyRequests(IpAddr),
     Unauthorized,
+    DBErr,
+    AlreadyExists,
 }
 
 impl warp::reject::Reject for Error {}
