@@ -12,7 +12,7 @@ args = ap.parse_args()
 
 if not os.path.isdir(args.out):
     os.mkdir(args.out)
-with open('external/sha1.csv') as csvfile:
+with open('out/sha1.csv') as csvfile:
 # with open('out/sha1.csv') as csvfile:
     csvreader = csv.reader(csvfile)
     next(csvreader)

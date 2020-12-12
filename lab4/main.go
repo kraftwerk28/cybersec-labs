@@ -30,7 +30,7 @@ func genMD5(password string) []string {
 func genSHA1(password string) []string {
 	salt := make([]byte, 16)
 	rand.Read(salt)
-	hash := sha1.Sum([]byte(password + string(salt)))
+	hash := sha1.Sum([]byte(password + hex.EncodeToString(salt)))
 	return []string{b64enc(hash[:]), h16enc(salt)}
 }
 
@@ -111,7 +111,7 @@ func main() {
 	flag.Parse()
 
 	count, outPath := *flcount, *floutPath
-	procCount := 3
+	procCount := 1
 
 	if _, err := os.Stat(outPath); os.IsNotExist(err) && !*flgenWords {
 		os.Mkdir(outPath, os.ModePerm)
