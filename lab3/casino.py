@@ -106,5 +106,19 @@ if __name__ == '__main__':
     # by substracting 1h from deletion_time
 
     # LCG_crack()
-    # MT_crack()
+    """
+    Result:
+    Yay! https://docs.google.com/document/d/1E_ltXUqvmmWeb3Dl3Qsyexsy5V7M6Lb1kvkXiXz9sks/edit?usp=sharing https://docs.google.com/document/d/1qsNXIqxQEs4Xbz5ye6z0ttrct1qn7zos4Vwl7PzcEK0/edit?usp=sharing
+    """
+
+    MT_crack()
+    """
+    Result
+    Yay! It's different from the first one: https://docs.google.com/document/d/19vgZtvDN4_StEgVEM9MjfxnqfayByLNMD7PFJgvZv7c/edit?usp=sharing
+    """
+
     MT_BETTER_crack()
+    """
+    Result:
+    Yay!
+    """
