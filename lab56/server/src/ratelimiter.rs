@@ -1,4 +1,3 @@
-use log::info;
 use std::{
     cmp::Eq,
     collections::HashMap,
@@ -20,13 +19,15 @@ type Records = Arc<Mutex<HashMap<Record, usize>>>;
 pub struct RateLimiter {
     records: Records,
     rate_limit: usize,
+    #[allow(dead_code)]
     tick_handle: JoinHandle<()>,
 }
 
 impl RateLimiter {
     pub fn from_env() -> Self {
         let rate_limit = rtenv!("RATELIMIT" or "5" as usize);
-        let time_frame = Duration::from_secs(rtenv!("RL_TIMEFRAME" or "60" as u64));
+        let time_frame =
+            Duration::from_secs(rtenv!("RL_TIMEFRAME" or "60" as u64));
         Self::new(rate_limit, time_frame)
     }
 

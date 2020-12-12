@@ -1,12 +1,13 @@
 use std::net::IpAddr;
+use tokio_postgres::Error as PgError;
 
 #[derive(Debug)]
 pub enum Error {
     TooManyRequests(IpAddr),
     Unauthorized,
-    DBErr,
+    DBErr(PgError),
     AlreadyExists,
-    InvalidHash
+    InvalidHash,
 }
 
 impl warp::reject::Reject for Error {}

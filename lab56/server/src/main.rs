@@ -1,11 +1,11 @@
 #[macro_use]
 mod utils;
+mod crypto;
 mod error;
 mod handlers;
 mod models;
 mod ratelimiter;
 mod routes;
-mod crypto;
 
 use crate::{ratelimiter::RateLimiter, routes::root_route, utils::*};
 use std::env;

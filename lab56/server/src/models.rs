@@ -8,10 +8,10 @@ pub struct Count {
 
 #[derive(Serialize)]
 pub struct User {
-    user_id: i32,
-    email: String,
-    pwd_hash: String,
-    phone_number: Option<String>,
+    pub user_id: i32,
+    pub email: String,
+    pub pwd_hash: String,
+    pub phone_number: Option<String>,
 }
 
 #[derive(Serialize, Deserialize)]

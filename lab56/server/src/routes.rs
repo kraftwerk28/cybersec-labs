@@ -34,15 +34,15 @@ fn rate_limit(ctx: Ctx) -> rpl!(()) {
 }
 
 fn check_auth(ctx: Ctx) -> rpl!((UserID,)) {
-    warp::cookie("token")
-        .and(with_ctx(ctx))
-        .and_then(|cookie: String, mut ctx: Ctx| async move {
+    warp::cookie("token").and(with_ctx(ctx)).and_then(
+        |cookie: String, mut ctx: Ctx| async move {
             if let Some(user_id) = ctx.check_token(cookie) {
                 Ok(user_id)
             } else {
                 Err(reject::custom(Error::Unauthorized))
             }
-        })
+        },
+    )
 }
 
 pub fn login(ctx: Ctx) -> rpl!() {
@@ -70,7 +70,7 @@ pub fn get_users(ctx: Ctx) -> rpl!() {
 }
 
 pub fn register_phone(ctx: Ctx) -> rpl!() {
-    warp::path("add_phone")
+    warp::path("phone")
         .and(with_ctx(ctx.clone()))
         .and(check_auth(ctx))
         .and(warp::post())
@@ -78,6 +78,13 @@ pub fn register_phone(ctx: Ctx) -> rpl!() {
         .and_then(handlers::register_phone)
 }
 
+pub fn unregister_phone(ctx: Ctx) -> rpl!() {
+    warp::path("phone")
+        .and(with_ctx(ctx.clone()))
+        .and(check_auth(ctx))
+        .and(warp::delete())
+        .and_then(handlers::delete_phone)
+}
 pub fn static_srv(ctx: Ctx) -> rpl!() {
     warp::get().and(warp::fs::dir(ctx.public_path))
 }
@@ -87,6 +94,7 @@ pub fn root_route(ctx: Ctx) -> rpl!() {
         .or(login(ctx.clone()))
         .or(register(ctx.clone()))
         .or(register_phone(ctx.clone()))
+        .or(unregister_phone(ctx.clone()))
         .or(static_srv(ctx.clone()))
         .recover(handlers::error)
 }

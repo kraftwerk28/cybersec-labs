@@ -1,6 +1,7 @@
-use aes_gcm::{
-    aead::{generic_array::GenericArray, Aead, NewAead},
-    Aes256Gcm,
+use crypto::{
+    aead::{AeadDecryptor, AeadEncryptor},
+    aes::KeySize,
+    aes_gcm::AesGcm,
 };
 use rand::{thread_rng, Rng};
 
@@ -18,41 +19,42 @@ pub fn make_token() -> String {
     base64::encode(raw)
 }
 
-fn create_cipher() -> Aes256Gcm {
-    let env_key = rtenv!("AEAD_KEY" as String);
-    let key = GenericArray::from_slice(env_key.as_bytes());
-    Aes256Gcm::new(key)
-}
-
 pub fn aead_encrypt(data: &str) -> String {
-    let salt = thread_rng().gen::<[u8; 16]>();
-    let nonce = GenericArray::from_slice(&salt);
-
-    let aes = create_cipher();
-    let mut enc = aes
-        .encrypt(nonce, data.as_bytes())
-        .expect("Failed to encrypt");
-    enc.extend(&salt);
-    base64::encode(enc)
+    let dummy_aad = vec![0x42; 16];
+    let nonce = thread_rng().gen::<[u8; 12]>();
+    let env_key = rtenv!("AEAD_KEY" as String);
+    let mut aes = AesGcm::new(KeySize::KeySize128, env_key.as_bytes(), &nonce, &dummy_aad);
+    let mut tag = vec![0; 16];
+    let mut result_raw = vec![0; data.len()];
+    aes.encrypt(data.as_bytes(), &mut result_raw, &mut tag);
+    result_raw.extend(&nonce);
+    result_raw.extend(tag);
+    base64::encode(result_raw)
 }
 
 pub fn aead_decrypt(data: &str) -> String {
-    let raw = base64::decode(data).expect("Failed to decode data");
-    let (body, salt) = raw.split_at(raw.len() - 16);
-    dbg!(salt.len());
-    let nonce = GenericArray::from_slice(&salt);
-    let aes = create_cipher();
-
-    let enc = aes.decrypt(nonce, body).unwrap();
-    String::from_utf8(enc).unwrap().to_string()
+    let dummy_aad = vec![0x42; 16];
+    let raw_data = base64::decode(data).unwrap();
+    let (body, tag) = raw_data.split_at(raw_data.len() - 16);
+    let (body, nonce) = body.split_at(body.len() - 12);
+    let env_key = rtenv!("AEAD_KEY" as String);
+    let mut aes = AesGcm::new(KeySize::KeySize128, env_key.as_bytes(), &nonce, &dummy_aad);
+    let mut result_raw = vec![0; body.len()];
+    aes.decrypt(&body, &mut result_raw, &tag);
+    String::from_utf8(result_raw).unwrap()
 }
 
-#[test]
-fn check_aead() {
-    let data = "Hello, world";
-    let enc = aead_encrypt(data);
-    println!("input: {}; encrypted: {}", data, enc);
-    let dec = aead_decrypt(&enc);
-    println!("decrypted: {}", dec);
-    assert_eq!(data, dec);
+#[cfg(test)]
+mod test {
+    #[test]
+    fn check_aead() {
+        use crate::crypto::*;
+        let data = "Hello, world";
+        let enc = aead_encrypt(data);
+        println!("input: {}; encrypted: {}", data, enc);
+        let dec = aead_decrypt(&enc);
+        println!("decrypted: {}", dec);
+        // assert_eq!(data.len(), dec.len());
+        assert_eq!(data, dec);
+    }
 }

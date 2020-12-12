@@ -66,15 +66,15 @@ pub async fn register(ctx: Ctx, creds: RegisterCreds) -> Result<impl Reply, Reje
         .map(|_| warp::reply::with_status("", StatusCode::CREATED))
         .map_err(|e| {
             error!("{:?}", e);
-            reject::custom(Error::DBErr)
+            reject::custom(Error::DBErr(e))
         })
 }
 
-pub async fn get_users(ctx: Ctx, user_id: UserID) -> Result<impl Reply, Rejection> {
+pub async fn get_users(ctx: Ctx, _user_id: UserID) -> Result<impl Reply, Rejection> {
     ctx.db
         .query("SELECT * FROM users", &[])
         .await
-        .map(|rows| rows.iter().map(User::from).collect::<Vec<_>>())
+        .map(|rows| rows.iter().map(|u| ctx.decrypt_user(u)).collect::<Vec<_>>())
         .map(|c| warp::reply::json(&c))
         .map_err(|_| warp::reject())
 }
@@ -92,10 +92,23 @@ pub async fn register_phone(
         )
         .await
         .map(|_| reply::with_status("", StatusCode::CREATED))
-        .map_err(|_| reject::custom(Error::DBErr))
+        .map_err(|e| reject::custom(Error::DBErr(e)))
+}
+
+pub async fn delete_phone(ctx: Ctx, user_id: UserID) -> Result<impl Reply, Rejection> {
+    ctx.db
+        .query(
+            "UPDATE users SET phone_number = NULL WHERE user_id = $1",
+            &[&user_id],
+        )
+        .await
+        .map(|_| reply::with_status("", StatusCode::CREATED))
+        .map_err(|e| reject::custom(Error::DBErr(e)))
 }
 
 pub async fn error(rej: Rejection) -> Result<impl Reply, Rejection> {
+    use reject::{MethodNotAllowed, MissingCookie};
+    let empty_resp = String::new();
     if let Some(e) = rej.find::<Error>() {
         use Error::*;
         let code = match e {
@@ -104,11 +117,28 @@ pub async fn error(rej: Rejection) -> Result<impl Reply, Rejection> {
             InvalidHash => StatusCode::BAD_REQUEST,
             _ => StatusCode::INTERNAL_SERVER_ERROR,
         };
-        Ok(reply::with_status("", code))
+        let reason = match e {
+            DBErr(err) => format!("{:?}", err),
+            _ => "".to_string(),
+        };
+        Ok(reply::with_status(reason, code))
     } else if rej.is_not_found() {
-        Ok(reply::with_status("Not found", StatusCode::NOT_FOUND))
+        Ok(reply::with_status(
+            "Not found".to_string(),
+            StatusCode::NOT_FOUND,
+        ))
+    } else if let Some(_) = rej.find::<MethodNotAllowed>() {
+        Ok(reply::with_status(
+            empty_resp,
+            StatusCode::METHOD_NOT_ALLOWED,
+        ))
+    } else if let Some(_) = rej.find::<MissingCookie>() {
+        Ok(reply::with_status(empty_resp, StatusCode::BAD_REQUEST))
     } else {
         log::error!("{:?}", rej);
-        Ok(reply::with_status("", StatusCode::INTERNAL_SERVER_ERROR))
+        Ok(reply::with_status(
+            empty_resp,
+            StatusCode::INTERNAL_SERVER_ERROR,
+        ))
     }
 }

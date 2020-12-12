@@ -1,13 +1,11 @@
-use crate::ratelimiter::RateLimiter;
+use crate::{crypto, models::User, ratelimiter::RateLimiter};
 use log::{error, info};
-use rand::{thread_rng, Rng};
 use std::{
     collections::HashMap,
     sync::{Arc, Mutex},
     time::Duration,
 };
-use tokio_postgres::{Client, Config, NoTls};
-use warp::http::{Error, Response, StatusCode};
+use tokio_postgres::{Client, Config, NoTls, Row};
 
 macro_rules! rpl {
     () => (rpl!(impl Reply));
@@ -74,7 +72,11 @@ pub struct Ctx {
 }
 
 impl Ctx {
-    pub fn new(public_path: String, db: Client, rate_limiter: RateLimiter) -> Self {
+    pub fn new(
+        public_path: String,
+        db: Client,
+        rate_limiter: RateLimiter,
+    ) -> Self {
         let mut argon_config = argon2::Config::default();
         argon_config.variant = argon2::Variant::Argon2id;
         argon_config.thread_mode = argon2::ThreadMode::Sequential;
@@ -97,5 +99,13 @@ impl Ctx {
     pub fn check_token(&mut self, token: String) -> Option<UserID> {
         let lck = self.tokens.lock().unwrap();
         lck.get(&token).map(|u| *u)
+    }
+
+    pub fn decrypt_user(&self, row: &Row) -> User {
+        let mut user = User::from(row);
+        if let Some(num) = user.phone_number {
+            user.phone_number = Some(crypto::aead_decrypt(&num));
+        }
+        user
     }
 }
