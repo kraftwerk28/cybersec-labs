@@ -6,17 +6,8 @@ import (
 	"io/ioutil"
 	"log"
 	"math/rand"
-	_ "sort"
 	"time"
 )
-
-var recentKeys = []string{
-	//  "ABCDEFGHIJKLMNOPQRSTUVWXYZ",
-	"ZXKQJIDRTBMAGCFVLPNHWESYOU",
-	"FGWJEQPTMONDUSZBAHYILVRXCK",
-	"AGICSQWOLKEPJBVMTUNHDRZFYX",
-	"KUECGPWZMXBAJSHFLTNYRVODIQ",
-}
 
 func prepare(path string) []rune {
 	raw, err := ioutil.ReadFile(path)
@@ -43,43 +34,23 @@ func prepare(path string) []rune {
 		resultRunes[i] = rune(result[i])
 	}
 	return resultRunes
-
-	// return []rune(string(result))
 }
 
 func main() {
 	log.SetFlags(0)
 	rand.Seed(time.Now().UnixNano())
 
-	for _, ks := range recentKeys {
-		key := FromString(ks)
-		if !key.isValid() {
-			log.Fatalf("Key %v isn't valid", ks)
-		}
-	}
-
-	ngramDir := flag.String("n", "ngrams", "")
-	inputFname := flag.String("i", "", "")
-	keyLen := flag.Int("s", 1, "")
+	ngramDir := flag.String("n", "ngrams", "Directory with ngrams")
+	wordFreqsFilename := flag.String("w", "20k_wordlist.txt", "Path to top words")
+	inputFname := flag.String("i", "", "Filename with cipher text")
+	keyLen := flag.Int("s", 1, "Key length")
 	flag.Parse()
 
-	trainNgrams := ParseFreqs(*ngramDir)
+	trainNgrams := ParseFrequencies(*ngramDir)
+	wordFreqs := ParseTopWords(*wordFreqsFilename)
 	ciphTextBytes, _ := ioutil.ReadFile(*inputFname)
 	ciphText := []rune(string(ciphTextBytes))
 
-	// m := make(map[rune]bool)
-	// for i := range ciphText {
-	// 	m[ciphText[i]] = true
-	// }
-	// sl := make([]rune, 0, len(m))
-	// for i := range m {
-	// 	sl = append(sl, i)
-	// }
-	// sort.Slice(sl, func(i, j int) bool { return sl[i] < sl[j] })
-	// log.Println(sl, len(sl))
-
-	// ga := NewPolyGA(ciphText, 1, trainNgrams)
-	ga := NewPolyGA(ciphText, *keyLen, trainNgrams)
-	// ga := NewPolyGAwKeys(ciphText5, recentKeys)
+	ga := NewPolyGA(ciphText, *keyLen, trainNgrams, wordFreqs)
 	ga.Run()
 }

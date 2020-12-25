@@ -7,4 +7,10 @@ message1 = r'Yx`7cen7v7ergrvc~yp:|rn7OXE7t~g.re97R9p97~c7d.xb{s7cv|r7v7dce~yp75.
 
 
 if __name__ == '__main__':
-    print(xor_strings(message1, 23))
+    maybe_words = ['key', 'xor', 'now']
+    for i in range(64):
+        res = xor_strings(message1, i)
+        if all(w in res.lower() for w in maybe_words):
+            print(f'key = {i}')
+            print(res)
+            break

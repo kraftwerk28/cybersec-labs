@@ -50,7 +50,7 @@ func ParseFreq(filepath string) NgramFreqMap {
 	return result
 }
 
-func ParseFreqs(path string) map[int]NgramFreqMap {
+func ParseFrequencies(path string) map[int]NgramFreqMap {
 	result := make(map[int]NgramFreqMap, ngramSetLength)
 	wg := sync.WaitGroup{}
 	wg.Add(ngramSetLength)
@@ -62,5 +62,22 @@ func ParseFreqs(path string) map[int]NgramFreqMap {
 		}(i, path)
 	}
 	wg.Wait()
+	return result
+}
+
+func ParseTopWords(path string) map[string]int {
+	fd, err := os.Open(path)
+	if err != nil {
+		log.Fatal(err)
+	}
+	sc, lines := bufio.NewScanner(fd), make([]string, 0)
+	for sc.Scan() {
+		word := strings.ToUpper(sc.Text())
+		lines = append(lines, word)
+	}
+	result := make(map[string]int, len(lines))
+	for i := range lines {
+		result[lines[i]] = len(lines) - i
+	}
 	return result
 }

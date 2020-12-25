@@ -24,7 +24,7 @@ const (
 	epsilon = 0.0000001
 
 	// 1 - trigrams, 2 - quadgrams + 1, 3 - quintgrams + 1 + 2
-	ngramSetLength = 3
+	ngramSetLength = 2
 )
 
 func getAlphabet() []rune {

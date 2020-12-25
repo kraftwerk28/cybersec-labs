@@ -74,19 +74,23 @@ class Individ:
 
     def encode(self, text: str) -> str:
         groups = group(text, len(self.keys))
-        enc_groups = [key.encode(group)
-                      for key, group in zip(self.keys, groups)]
+        enc_groups = [
+            key.encode(group) for key, group in zip(self.keys, groups)
+        ]
         return ungroup(enc_groups)
 
     def decode(self, text: str) -> str:
         groups = group(text, len(self.keys))
-        dec_groups = [key.decode(group)
-                      for key, group in zip(self.keys, groups)]
+        dec_groups = [
+            key.decode(group) for key, group in zip(self.keys, groups)
+        ]
         return ungroup(dec_groups)
 
     def crossover(self, other: 'Individ', k_count: List[int]) -> 'Individ':
-        new_keys = [key1.crossover(key2, k_count)
-                    for key1, key2 in zip(self.keys, other.keys)]
+        new_keys = [
+            key1.crossover(key2, k_count)
+            for key1, key2 in zip(self.keys, other.keys)
+        ]
         return Individ(new_keys)
 
     def mutate(self) -> 'Individ':
@@ -103,8 +107,11 @@ class Individ:
 
 
 class PolyGA(BaseGA):
-    def __init__(self, cipher_text, key_length=None,
-                 train_ngrams={}, predefined_keys=None):
+    def __init__(self,
+                 cipher_text,
+                 key_length=None,
+                 train_ngrams={},
+                 predefined_keys=None):
         self.cipher_text = cipher_text
         self.train_ngrams = train_ngrams
 
@@ -113,18 +120,19 @@ class PolyGA(BaseGA):
         self.generation = [Key.random]
 
         if predefined_keys is None:
-            self.generation = [Individ.random(key_length,
-                                              string.ascii_uppercase)
-                               for _ in range(self.population_size)]
+            self.generation = [
+                Individ.random(key_length, string.ascii_uppercase)
+                for _ in range(self.population_size)
+            ]
             self.key_length = key_length
         else:
-            self.generation = [Individ(predefined_keys)
-                               for _ in range(self.population_size)]
+            self.generation = [
+                Individ(predefined_keys) for _ in range(self.population_size)
+            ]
             self.key_length = len(predefined_keys)
 
         self.tournament_probabilities = calc_tournament_probabilities(
-            self.tournament_win_prob,
-            self.tournament_size)
+            self.tournament_win_prob, self.tournament_size)
 
         self.unchanged_gens = 0
 
@@ -210,8 +218,9 @@ class PolyGA(BaseGA):
         sorted_fenotypes = sorted(zip(self.generation, fitnesses),
                                   key=lambda item: item[1],
                                   reverse=True)
-        tournament_pool = [ft[0] for ft
-                           in list(sorted_fenotypes)[:self.tournament_size]]
+        tournament_pool = [
+            ft[0] for ft in list(sorted_fenotypes)[:self.tournament_size]
+        ]
         # return [random.choices(tournament_pool, k=2,
         #                        weights=self.tournament_probabilities)
         #         for _ in range(self.population_size // 2)]

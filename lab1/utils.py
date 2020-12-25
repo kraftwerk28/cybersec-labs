@@ -1,14 +1,54 @@
 #!/usr/bin/env python
 import os
 import math
-from matplotlib import pyplot as plt
-import matplotlib
 import re
 import random
 import string
 
 ALPHABET = string.ascii_lowercase
-matplotlib.use('GTK3Agg')
+
+
+def railfence_encode(text: str, width: int):
+    fence_idx, dx = 0, 1
+    fences = [[] for _ in range(width)]
+    for l in text:
+        fences[fence_idx].append(l)
+        fence_idx += dx
+
+        if fence_idx == 0:
+            dx = 1
+        elif fence_idx == width - 1:
+            dx = -1
+    return ''.join(''.join(f) for f in fences)
+
+
+def railfence_decode(cipher: str, width: int) -> str:
+    chunklens = [0 for _ in range(width)]
+    nfence = 0
+    dx = 1
+    for i in cipher:
+        chunklens[nfence] += 1
+        nfence += dx
+        if dx == 1 and nfence == width - 1:
+            dx = -1
+        elif dx == -1 and nfence == 0:
+            dx = 1
+    chunks = []
+    x = 0
+    for chunklen in chunklens:
+        chunks.append(list(cipher[x:x + chunklen]))
+        x += chunklen
+    nfence = 0
+    dx = 1
+    ans = []
+    for _ in cipher:
+        ans.append(chunks[nfence].pop(0))
+        nfence += dx
+        if dx == 1 and nfence == width - 1:
+            dx = -1
+        elif dx == -1 and nfence == 0:
+            dx = 1
+    return ''.join(ans)
 
 
 def set_alphabet(alphabet):
@@ -59,9 +99,8 @@ def repeats(s, start_length=2, end_length=None):
                 s_copy = s_copy[current_offset:]
                 idx = s_copy.find(searched_str)
                 rep_count += 1
-            if (rep_count > 1
-                    and all(searched_str not in s
-                            for s in found_strings.keys())):
+            if (rep_count > 1 and all(searched_str not in s
+                                      for s in found_strings.keys())):
                 found_strings[searched_str] = found_indexes
     return found_strings
 
@@ -121,6 +160,9 @@ def ungroup(groups):
 
 
 def plot_ioc(text, alphabet=ALPHABET, start=2, end=50):
+    import matplotlib
+    matplotlib.use('GTK3Agg')
+    from matplotlib import pyplot as plt
     iocs = []
     for i in range(start, end):
         iocs_local = [IoC(g, alphabet) for g in group(text, i)]
@@ -137,8 +179,7 @@ def caesar(text, letter, alphabet=ALPHABET):
 
 
 def split_to_ngrams(text, t):
-    return [''.join(text[i:i+t])
-            for i in range(len(text) - t + 1)]
+    return [''.join(text[i:i + t]) for i in range(len(text) - t + 1)]
 
 
 def ngram_freq(ngrams):

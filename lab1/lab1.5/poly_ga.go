@@ -2,8 +2,9 @@ package main
 
 import (
 	"log"
-	"math"
+	_ "math"
 	"sort"
+	"strings"
 	"sync"
 
 	"github.com/mroth/weightedrand"
@@ -18,6 +19,7 @@ const (
 type PolyGA struct {
 	cipherText           []rune
 	trainNgrams          NgramSet
+	wordFreqs            map[string]int
 	nGeneration          int
 	unchangedGenerations int
 	keyLen               int
@@ -37,10 +39,16 @@ type parents struct {
 	snd Individ
 }
 
-func NewPolyGA(cipherText []rune, keyLen int, trainNgrams NgramSet) PolyGA {
+func NewPolyGA(
+	cipherText []rune,
+	keyLen int,
+	trainNgrams NgramSet,
+	wordFreqs map[string]int,
+) PolyGA {
 	if population_size < tournament_size {
-		panic("Tournament size must be <= of generation size")
+		log.Fatal("Tournament size must be <= of generation size")
 	}
+
 	generation := make([]Individ, population_size)
 	for i := range generation {
 		generation[i] = randomIndivid(keyLen)
@@ -51,6 +59,7 @@ func NewPolyGA(cipherText []rune, keyLen int, trainNgrams NgramSet) PolyGA {
 		trainNgrams: trainNgrams,
 		keyLen:      keyLen,
 		currentGen:  generation,
+		wordFreqs:   wordFreqs,
 	}
 }
 
@@ -140,6 +149,7 @@ func (self parents) get() (Individ, Individ) {
 // 	return result
 // }
 
+// Selection with weighted random
 func (self *PolyGA) selection(data []fitnessIndividual) []parents {
 	tournament := data[:tournament_size]
 
@@ -201,16 +211,25 @@ func (self *PolyGA) report() {
 }
 
 func (self *PolyGA) fitness(individ *Individ) (result float64) {
-	for ngramSize, trainFreqs := range self.trainNgrams {
-		decoded := individ.decode(self.cipherText)
-		decodedNgrams := splitToNgrams(decoded, ngramSize)
-		decodedFreqs := countFreqs(decodedNgrams)
-		for ngram, fp := range decodedFreqs {
-			if ft, ok := trainFreqs[ngram]; ok && ft > 0 {
-				result += float64(fp) * math.Log2(float64(ft))
-			}
-		}
+	decoded := individ.decode(self.cipherText)
+	decodedStr := string(decoded)
+
+	// Ngrams
+	// for ngramSize, ngramFrequencies := range self.trainNgrams {
+	// 	decodedNgrams := splitToNgrams(decoded, ngramSize)
+	// 	decodedFrequencies := countFreqs(decodedNgrams)
+
+	// 	for ngram, fp := range decodedFrequencies {
+	// 		if ft, ok := ngramFrequencies[ngram]; ok && ft > 0 {
+	// 			result += float64(fp) * math.Log2(float64(ft))
+	// 		}
+	// 	}
+	// }
+
+	for word, wordValue := range self.wordFreqs {
+		result += float64(strings.Count(decodedStr, word) * wordValue)
 	}
+
 	return
 }
 
